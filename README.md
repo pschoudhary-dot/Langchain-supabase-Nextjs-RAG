@@ -1,36 +1,134 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Document Processing System
 
-## Getting Started
+## Overview
+This Next.js application provides an intelligent document processing system that can handle PDF and TXT files. It uses LangChain for document processing, OpenAI for embeddings, and Supabase for vector storage, enabling efficient document chunking and semantic search capabilities.
 
-First, run the development server:
+## Features
+- 📄 Support for PDF and TXT file uploads
+- 🔄 Automatic text chunking using LangChain's RecursiveCharacterTextSplitter
+- 🧠 Document embeddings generation using OpenAI
+- 💾 Vector storage in Supabase
+- ⚡ Real-time processing status updates
+- 🎯 Efficient batch processing for large documents
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Tech Stack
+- **Frontend Framework**: Next.js 14
+- **Styling**: Tailwind CSS
+- **Document Processing**: LangChain
+- **AI/ML**: OpenAI API
+- **Database**: Supabase (PostgreSQL with pgvector)
+- **Language**: TypeScript
+
+## Prerequisites
+- Node.js 18.x or higher
+- PNPM package manager
+- OpenAI API key
+- Supabase account and project
+
+## Environment Variables
+Create a `.env.local` file in the root directory with the following variables:
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_OPENAI_API_KEY=your_openai_api_key
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Installation
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd <project-directory>
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2. Install dependencies:
+```bash
+pnpm install
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Set up Supabase:
+   - Create a new Supabase project
+   - Enable pgvector extension
+   - Create the necessary tables (see Database Setup section)
 
-## Learn More
+4. Start the development server:
+```bash
+pnpm dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Database Setup
+Execute the following SQL in your Supabase SQL editor:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```sql
+-- Enable the pgvector extension
+create extension vector;
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+-- Create documents table
+create table documents (
+  id bigserial primary key,
+  content text,
+  metadata jsonb,
+  embedding vector(1536)
+);
 
-## Deploy on Vercel
+-- Create a search function
+create function match_documents (
+  query_embedding vector(1536),
+  match_count int DEFAULT 10,
+  filter jsonb DEFAULT '{}'
+) returns table (
+  id bigint,
+  content text,
+  metadata jsonb,
+  similarity float
+)
+language plpgsql
+as $$
+begin
+  return query
+  select
+    id,
+    content,
+    metadata,
+    1 - (documents.embedding <=> query_embedding) as similarity
+  from documents
+  where metadata @> filter
+  order by documents.embedding <=> query_embedding
+  limit match_count;
+end;
+$$;
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Usage
+1. Navigate to the application in your browser
+2. Click the upload area or drag and drop a PDF/TXT file
+3. Wait for the processing to complete
+4. The document will be chunked, embedded, and stored in your database
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Project Structure
+```
+├── app/
+│   ├── tools/
+│   │   └── fileUploader.tsx
+│   ├── layout.tsx
+│   └── page.tsx
+├── public/
+├── styles/
+├── next.config.js
+├── package.json
+└── README.md
+```
+
+## Contributing
+1. Fork the repository
+2. Create a new branch
+3. Make your changes
+4. Submit a pull request
+
+## License
+MIT License
+
+## Acknowledgments
+- [LangChain](https://js.langchain.com/docs) for document processing
+- [OpenAI](https://openai.com) for embeddings
+- [Supabase](https://supabase.com) for vector storage
+- [Next.js](https://nextjs.org) for the framework
